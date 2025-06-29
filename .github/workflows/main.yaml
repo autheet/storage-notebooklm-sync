@@ -1,0 +1,21 @@
+name: CI Workflow Using Submodule Action
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # STEP 1: Check out the main repo AND initialize/update the submodule
+      - name: Check out repository and submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive' # This pulls in the submodule code
+
+      # STEP 2: Now you can use the action from the submodule's path
+      - name: Run my submodule action
+        uses: ./storage-notebooklm-sync/action.yaml # Path from the root of your project
+
+      # ... other steps in your job
+      - name: Another step
+        run: echo "Action from submodule completed."

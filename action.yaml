@@ -20,6 +20,8 @@ jobs:
       # Step 1: Check out the repository's code so the action can access it.
       - name: Check out repository code
         uses: actions/checkout@v4
+        with:
+          submodules: 'recursive' # This pulls in the submodule code
 
       # Step 2: Set up Node.js environment to run the script
       - name: Set up Node.js
