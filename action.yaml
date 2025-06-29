@@ -1,54 +1,23 @@
-# .github/workflows/concatenate.yml
+name: "create a text tar"
+description: "GitHub Action to create a text based tar and upload artifact"
+inputs:
+  script:
+    description: "The JavaScript code to run"
+    required: true
+    default: "console.log('Hello, World!')"
+  node-version:
+    description: "Node.js version to use"
+    required: false
+    default: "20.x"
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
 
-name: storage-notebooklm-sync-concatenation
-
-# Controls when the action will run.
-# It can be triggered manually from the Actions tab (workflow_dispatch)
-# or automatically on every push to the main branch.
-on:
-  workflow_dispatch:
-  push:
-    branches:
-      - main
-
-jobs:
-  create-text-archive:
-    # The type of runner that the job will run on
-    runs-on: ubuntu-latest
-
-    steps:
-      # Step 1: Check out the repository's code so the action can access it.
-      - name: Check out repository code
-        uses: actions/checkout@v4
-        with:
-          submodules: 'recursive' # This pulls in the submodule code
-
-      # Step 2: Set up Node.js environment to run the script
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      # Step 3: Run Node.js script to create the text-based archive
-      - name: Create text-based archive with JS
-        id: create_archive
-        run: |
-          node -e ./tar.js
-
-      # Step 4: (Optional) Verify the output file for debugging purposes.
-      # This step lists the created file and prints its first 20 lines to the action logs.
-      - name: Verify output file
-        run: |
-          echo "Listing contents of the tmp directory:"
-          ls -lR tmp
-          echo -e "\n--- First 20 lines of concatenated.txt ---"
-          head -n 20 tmp/concatenated.txt
-          echo "--- End of preview ---"
-
-      # Step 5: Upload the concatenated file as a build artifact.
-      # This makes the file available for download from the action's summary page.
-      - name: Upload concatenated file
-        uses: actions/upload-artifact@v4
-        with:
-          name: concatenated-text-file
-          path: tmp/concatenated.txt
+    - name: Run JavaScript
+      run: |
+        node ${{ github.action_path }}/tar.js
+      shell: bash
