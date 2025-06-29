@@ -1,6 +1,5 @@
-# **GitHub Action: storage-notebooklm-sync**
-todo: https://colab.research.google.com/drive/104mZ7leV_STnu14ywODIm727pT121Q5M?usp=sharing#scrollTo=GFOXR6SD_rkf
-todo: https://docs.play.ai/documentation/playnote/introduction 
+# **GitHub Action: storage-notebooklm-sync** 
+# THIS IS NOT READY TO USE YET
 
 
 git submodule add --branch main https://github.com/autheet/storage-notebooklm-sync.git storage-notebooklm-sync
