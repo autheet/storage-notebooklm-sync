@@ -1,4 +1,6 @@
 # **GitHub Action: storage-notebooklm-sync**
+git submodule add --branch main https://github.com/autheet/storage-notebooklm-sync.git storage-notebooklm-sync
+
 
 This GitHub Action automates the process of synchronizing your repository's source code with a **NotebookLM for Enterprise** data source. Please note, this tool is specifically designed for enterprise users and relies on the Google Cloud APIs available with that service.
 
