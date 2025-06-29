@@ -1,14 +1,20 @@
-name: "create a text tar"
-description: "GitHub Action to create a text based tar and upload artifact"
+name: "Create Text Archive and Upload"
+description: "Runs tar.js to create a concatenated text file and uploads it as an artifact."
 inputs:
-  script:
-    description: "The JavaScript code to run"
-    required: true
-    default: "console.log('Hello, World!')"
   node-version:
     description: "Node.js version to use"
     required: false
     default: "20.x"
+  artifact-name:
+    description: "Name for the uploaded text artifact"
+    required: false
+    default: "concatenated-text"
+  # You might not need the 'script' input anymore if tar.js is fixed
+  # script:
+  #   description: "The JavaScript code to run" # This might be redundant now
+  #   required: true
+  #   default: "console.log('Hello, World!')"
+
 runs:
   using: "composite"
   steps:
@@ -17,7 +23,23 @@ runs:
       with:
         node-version: ${{ inputs.node-version }}
 
-    - name: Run JavaScript
+    - name: Run tar.js to generate concatenated.txt
       run: |
         node ${{ github.action_path }}/tar.js
       shell: bash
+      # If tar.js needs to know where it is, or where the main workspace is,
+      # you can pass them as environment variables if necessary:
+      # env:
+      #   ACTION_PATH: ${{ github.action_path }}
+      #   WORKSPACE_PATH: ${{ github.workspace }}
+
+    - name: Upload concatenated text artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        # Path is relative to GITHUB_WORKSPACE by default
+        # Since tar.js (running from GITHUB_WORKSPACE) creates tmp/concatenated.txt,
+        # this path should be correct.
+        path: tmp/concatenated.txt
+        if-no-files-found: error # Fail the workflow if the file isn't found
+        # retention-days: 5 # Optional: how long to keep the artifact
