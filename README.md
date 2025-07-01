@@ -11,9 +11,6 @@
 5. upload tmp/concatenated.txt to your favorite storage provider
 
 
-git submodule add --branch main https://github.com/autheet/storage-notebooklm-sync.git storage-notebooklm-sync
-
-
 This GitHub Action automates the process of synchronizing your repository's source code with a **NotebookLM for Enterprise** data source. Please note, this tool is specifically designed for enterprise users and relies on the Google Cloud APIs available with that service.
 
 It is designed to be a "set it and forget it" tool. Once configured, every push to your main branch will automatically upload your repository's files to a Google Cloud Storage (GCS) bucket and refresh the corresponding Data Store in NotebookLM, ensuring your AI research assistant always has the most current version of your codebase.
