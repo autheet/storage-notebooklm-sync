@@ -1,6 +1,15 @@
 # **GitHub Action: storage-notebooklm-sync** 
 # THIS IS NOT READY TO USE YET
 
+# If you really want to try, this can help you already to generate a .txt file from your repository to upload it to your favourite prodiver and then add it as a source to your favorite AI:
+
+# Three steps to generate a concatenated.txt file
+1. download tar.js
+2. freshly clone the repository you want to concatenate
+3. copy tar.js into the root of your repository
+4. open terminal an run `node tar.js`
+5. upload tmp/concatenated.txt to your favorite storage provider
+
 
 git submodule add --branch main https://github.com/autheet/storage-notebooklm-sync.git storage-notebooklm-sync
 
