@@ -11,7 +11,7 @@
               '.txt', '.md', '.py', '.dart', '.js', '.ts', '.html', '.css',
               '.java', '.kt', '.swift', '.c', '.cpp', '.h', '.hpp', '.rs',
               '.go', '.rb', '.php', '.yml', '.yaml', '.json', '.xml', '.sh',
-              '.ini'
+              '.ini', '.conf', '.properties', '.gitignore', '.npmignore', '.svg', '.yaml', '.yml', '.md', '.txt', '.dart'
             ]);
             const FILE_NAMES = new Set(['Dockerfile']);
 
