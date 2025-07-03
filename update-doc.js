@@ -6,7 +6,7 @@ import { google } from 'googleapis';
 
 // --- Configuration ---
 // The ID of the document to update. Extract this from the document's URL.
-const DOCUMENT_ID = '1kfTD4U2BRjIyTM8COb1RFTUNpg7WkA4wg_n_WQ4ymqY';
+const DOCUMENT_ID = '1lLprT5Oxm8-2N4quO4leIw7v79YOkgr4dBu1v2YdIvs';
 
 // Scopes define the level of access you are requesting.
 const SCOPES = ['https://www.googleapis.com/auth/documents'];
