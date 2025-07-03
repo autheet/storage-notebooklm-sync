@@ -1,0 +1,15 @@
+{
+  "name": "google-docs-updater",
+  "version": "1.0.0",
+  "description": "A script to concatenate local files and update a Google Doc.",
+  "main": "update-doc.js",
+  "type": "module",
+  "scripts": {
+    "start": "node update-doc.js"
+  },
+  "dependencies": {
+    "@google-cloud/local-auth": "^3.0.1",
+    "googleapis": "^140.0.0",
+    "glob": "^10.4.1"
+  }
+}

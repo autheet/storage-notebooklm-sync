@@ -10,10 +10,113 @@
 4. open terminal an run `node tar.js`
 5. upload tmp/concatenated.txt to your favorite storage provider
 
+# update-doc.js
+
+Of course. This is a powerful way to automate your workflow. Using the Google Docs API directly from a Node.js script gives you a lot of control.
+
+However, this process is more involved than the Apps Script method because it requires you to handle authentication directly. It involves a few key parts:
+
+Setting up a Google Cloud Project: You'll need to enable the Google Docs API and create authorization credentials so your script can get permission to edit the doc on your behalf.
+
+The Node.js Script: This script will perform two main actions:
+
+Read all text-based files in its directory and concatenate them into tmp/concatenated.txt.
+
+Use the Google API library to authenticate and then overwrite the content of your Google Doc.
+
+Running the Script: The first time you run it, you'll need to grant permission through your browser. After that, it will be able to run automatically.
+
+Here are the complete instructions and the code to make it happen.
+
+Step 1: Configure Google Cloud and Authentication
+This is the most important part. Follow these steps carefully.
+
+Create a Google Cloud Project:
+
+Go to the Google Cloud Console.
+
+Create a new project (e.g., "Docs API Updater").
+
+Enable the Google Docs API:
+
+In your new project, go to the APIs & Services > Library.
+
+Search for "Google Docs API" and click Enable.
+
+Configure the OAuth Consent Screen:
+
+Go to APIs & Services > OAuth consent screen.
+
+Choose External and click Create.
+
+Fill in the required fields:
+
+App name: Docs CLI Updater
+
+User support email: Your email address.
+
+Developer contact information: Your email address.
+
+Click Save and Continue through the "Scopes" and "Test users" sections. You don't need to add anything there for this script. Finally, click Back to Dashboard.
+
+Create Credentials:
+
+Go to APIs & Services > Credentials.
+
+Click + Create Credentials and select OAuth client ID.
+
+For Application type, select Desktop app.
+
+Give it a name (e.g., "Docs Updater CLI") and click Create.
+
+A dialog will appear with your Client ID and Client Secret. Click the Download JSON button.
+
+Rename this downloaded file to credentials.json and place it in the same directory where you will save the Node.js script. This file is your secret key—do not share it publicly.
+
+Step 2: The Node.js Script
+Now, create the following two files in your project directory.
+
+First, create a package.json file to manage the project's dependencies.
+package.json for Docs Updater
+3. Juli, 17:14
+
+Öffnen
+
+Next, here is the main script. Save it as update-doc.js.
+Node.js Script to Update Google Doc
+3. Juli, 17:14
+
+Öffnen
+
+Step 3: Run the Script
+Install Dependencies: Open your terminal in the project directory (where you saved the files) and run:
+
+Bash
+
+npm install
+Run the Script: Start the script with:
+
+Bash
+
+npm start
+Authorize (First Time Only):
+
+Your web browser will automatically open to a Google sign-in page.
+
+Log in with the Google account that owns the document.
+
+You will see the "Google hasn’t verified this app" warning. Click Advanced and Continue.
+
+Grant the script permission to edit your Google Docs.
+
+Once you approve, the web page will confirm, and you can close it. Your terminal will show that the script has finished.
+
+After the first run, a token.json file will be created. This file stores your authorization, so you won't need to go through the browser approval process again unless you delete it.
 
 This GitHub Action automates the process of synchronizing your repository's source code with a **NotebookLM for Enterprise** data source. Please note, this tool is specifically designed for enterprise users and relies on the Google Cloud APIs available with that service.
 
 It is designed to be a "set it and forget it" tool. Once configured, every push to your main branch will automatically upload your repository's files to a Google Cloud Storage (GCS) bucket and refresh the corresponding Data Store in NotebookLM, ensuring your AI research assistant always has the most current version of your codebase.
+
 
 ## **The Problem This Solves**
 
