@@ -57,10 +57,13 @@ function processFile(filePath) {
         // Format file permissions to be human-readable (e.g., -rw-r--r--)
         const perms = (stat.mode & 0o777).toString(8).padStart(3, "0");
 
+        // Correctly normalize the file path for cross-platform compatibility.
+        const normalizedPath = filePath.replace(/\/g, "/");
+
         // Construct the text-based header with common tar-like variables
         const header = [
             "--- START HEADER ---",
-            `path: ./${filePath.replace(/\/g, "/")}`,
+            `path: ./${normalizedPath}`,
             `size: ${stat.size} bytes`,
             `compressed_size: ${encodedContent.length} bytes`,
             `mode: ${perms}`,
@@ -73,7 +76,7 @@ function processFile(filePath) {
         ].join("
 ");
 
-        const footer = `--- END: ./${filePath.replace(/\/g, "/")} ---`;
+        const footer = `--- END: ./${normalizedPath} ---`;
 
         // Append the entry to the output file
         const entry = `${header}
