@@ -1,187 +1,168 @@
-// storage-notebooklm-sync/tar.cjs
-
 const fs = require('fs');
 const path = require('path');
+const ignore = require('ignore'); // Our new best friend for .gitignore parsing
 
 const OUTPUT_FILE = 'tmp/concatenated.txt';
 const START_DIR = '.';
 
-// Define directories to explicitly exclude from the recursive scan.
-// These are typically build outputs, caches, or IDE configurations.
-const EXCLUDED_DIRS = new Set([
-    '.venv', // python venv
-    'venv', // python venv
-    'Pods', // Pods
-  '.git', // Git version control directory
-  'node_modules', // Node.js package dependencies
-  'tmp', // Temporary output directory for concatenated.txt
-  '.vscode', // VS Code IDE configuration files [10, 11]
-  'build', // Top-level Flutter build output directory [12, 13]
-  '.dart_tool', // Dart/Flutter internal tool-generated files and caches
-  'android/build', // Android build output
-  'android/.gradle', // Android Gradle caches
-  'ios/build', // iOS build output
-  'ios/Pods', // iOS CocoaPods dependencies
-  'ios/.symlinks', // iOS Xcode symlinks
-  'web/build', // Web build output
-  'windows/build', // Windows build output
-  'linux/build', // Linux build output
-  'macos/build' // macOS build output
-]);
+// Define hardcoded directories to always exclude, regardless of .gitignore.
+// '.git' and the script's 'tmp' output directory are typically always excluded.
+// 'node_modules' is usually covered by .gitignore files.
+const ALWAYS_EXCLUDED_DIRS = new Set(['.git', 'tmp']); // [1]
 
-// Define the file extensions to explicitly include.
-// .md files are intentionally removed as per the instruction.
+// Define the file extensions and specific filenames to include.
+// This list is quite comprehensive based on the project's likely codebase. [6]
 const FILE_EXTENSIONS = new Set([
-  '.txt',
-  '.py',
-  '.dart', // Keep .dart for source code, further filtering for generated files occurs below
-  '.js',
-  '.ts',
-  '.html',
-  '.css',
-  '.java',
-  '.kt',
-  '.swift',
-  '.c',
-  '.cpp',
-  '.h',
-  '.hpp',
-  '.rs',
-  '.go',
-  '.rb',
-  '.php',
-  '.yml',
-  '.yaml',
-  '.json',
-  '.xml',
-  '.sh',
-  '.ini',
-  '.conf',
-  '.properties',
-  '.gitignore', // Git ignore file, useful context
-  '.npmignore', // NPM ignore file, useful context
-  '.svg' // Often used in text-based formats (e.g., SVG as XML)
+  '.txt', '.md', '.py', '.dart', '.js', '.ts', '.html', '.css',
+  '.java', '.kt', '.swift', '.c', '.cpp', '.h', '.hpp', '.rs',
+  '.go', '.rb', '.php', '.yml', '.yaml', '.json', '.xml', '.sh',
+  '.ini', '.conf', '.properties', '.gitignore', '.npmignore', '.svg' // Added .gitignore and .npmignore for completeness
 ]);
+const FILE_NAMES = new Set(['Dockerfile']); // [6]
 
-// Define specific filenames to always include, regardless of their extension or location.
-// These are typically crucial configuration files.
-const FILE_NAMES = new Set([
-  'Dockerfile',
-  'pubspec.yaml', // Flutter project dependencies and metadata [14, 15]
-  'firebase.json', // Firebase project configuration [12, 13, 16-19]
-  'firestore.rules', // Firestore security rules [20-24]
-  'analysis_options.yaml', // Dart analyzer and linting rules [25-32]
-]);
+// Initialize a single 'ignore' instance. All .gitignore patterns will be added here.
+const ig = ignore();
 
-// Define regular expressions for specific file patterns to exclude.
-// This targets auto-generated files that end up in source directories.
-const EXCLUDED_FILE_PATTERNS = [
-  // Generated Flutter localization files [6, 7, 33-35]
-  /lib\/l10n\/app_localizations\.dart$/,
-  /lib\/l10n\/app_localizations_.*\.dart$/,
-  // Generated Firebase options file [8, 9]
-  /lib\/firebase_options\.dart$/,
-  // Generated Plugin Registrant files (across various platforms) [36-39]
-  /lib\/generated_plugin_registrant\.dart$/, // For generic Dart path
-  /ios\/Runner\/GeneratedPluginRegistrant\.swift$/,
-  /macos\/Flutter\/GeneratedPluginRegistrant\.swift$/,
-  /windows\/flutter\/generated_plugin_registrant\.h$/,
-  // Common build_runner generated files (e.g., for Freezed, JSON serializable)
-  /\.g\.dart$/,
-  /\.freezed\.dart$/,
-  /\.gr\.dart$/, // go_router generated files
-  // Other commonly generated files not useful for AI summarization
-  /pubspec\.lock$/, // Dependency lock file, frequently changes [14, 15]
-];
+/**
+ * Recursively loads patterns from all .gitignore files starting from a given directory
+ * and adds them to the global 'ig' object. Patterns are adjusted to be relative
+ * to the START_DIR.
+ * Directories explicitly ignored by a parent's .gitignore (or hardcoded excludes) are not
+ * traversed for further .gitignore files or content.
+ */
+function recursivelyLoadGitignorePatterns(currentDir) {
+    // Determine the path relative to the initial START_DIR (our "repo root").
+    const relativePathToStart = path.relative(START_DIR, currentDir);
 
-// Ensure the output directory exists and the output file is empty
-fs.mkdirSync(path.dirname(OUTPUT_FILE), { recursive: true });
-fs.writeFileSync(OUTPUT_FILE, '');
+    // Skip hardcoded excluded directories immediately. We don't even scan for .gitignore inside them.
+    if (ALWAYS_EXCLUDED_DIRS.has(path.basename(currentDir))) {
+        console.log(`  - Skipping pattern scan of hardcoded excluded directory: ${currentDir}`);
+        return;
+    }
+
+    // Check for a .gitignore file in the current directory.
+    const gitignorePath = path.join(currentDir, '.gitignore');
+    if (fs.existsSync(gitignorePath)) {
+        const patterns = fs.readFileSync(gitignorePath, 'utf8');
+        patterns.split('\n').forEach(pattern => {
+            const trimmedPattern = pattern.trim();
+            if (trimmedPattern === '') return; // Skip empty lines
+
+            let adjustedPattern;
+            if (relativePathToStart === '') {
+                // If we're at the START_DIR, patterns are as-is relative to START_DIR.
+                adjustedPattern = trimmedPattern;
+            } else {
+                // For subdirectories, patterns in their .gitignore are relative to that subdirectory.
+                // We need to convert them to be relative to the overall START_DIR.
+                // Patterns starting with '/' or '!/' in .gitignore are relative to the .gitignore file's own directory.
+                // E.g., if currentDir is 'src/module' and pattern is '/foo', it means 'src/module/foo' globally.
+                if (trimmedPattern.startsWith('/')) {
+                    // For patterns like '/foo' in a subdirectory, strip the leading '/' and prepend the subdirectory's path.
+                    adjustedPattern = path.join(relativePathToStart, trimmedPattern.substring(1)).replace(/\\/g, '/');
+                } else if (trimmedPattern.startsWith('!/')) {
+                    // Similar for negated root-relative patterns.
+                    adjustedPattern = '!' + path.join(relativePathToStart, trimmedPattern.substring(2)).replace(/\\/g, '/');
+                } else {
+                    // Standard relative pattern (e.g., 'foo/', 'bar.txt'). Just prepend the subdirectory's path.
+                    adjustedPattern = path.join(relativePathToStart, trimmedPattern).replace(/\\/g, '/');
+                }
+            }
+
+            ig.add(adjustedPattern); // Add the adjusted pattern to our global ignore object.
+            console.log(`  - Loaded pattern: "${trimmedPattern}" as "${adjustedPattern}" from ${gitignorePath}`);
+        });
+    }
+
+    // Now, traverse subdirectories to find more .gitignore files.
+    const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+    for (const entry of entries) {
+        if (entry.isDirectory()) {
+            const fullPath = path.join(currentDir, entry.name);
+            const entryRelativePath = path.relative(START_DIR, fullPath);
+
+            // Crucial optimization: If this directory is already ignored by a previously loaded .gitignore pattern
+            // (or by a hardcoded rule), we don't need to descend into it to find more .gitignore files.
+            // This is how .gitignore works: if a directory is ignored, its contents are also ignored.
+            // We check with a trailing slash to specifically match directory patterns.
+            if (ig.ignores(entryRelativePath + '/')) {
+                console.log(`  - Skipping scan of .gitignore in ignored directory: ${fullPath}`);
+                continue;
+            }
+
+            // Recursively call for non-ignored subdirectories.
+            recursivelyLoadGitignorePatterns(fullPath);
+        }
+    }
+}
+
+// Phase 1: Load all .gitignore patterns recursively from the starting directory.
+console.log('Loading .gitignore patterns recursively...');
+recursivelyLoadGitignorePatterns(START_DIR);
+console.log('Finished loading .gitignore patterns.\n');
+
+// Ensure the output directory exists and the output file is empty initially.
+fs.mkdirSync(path.dirname(OUTPUT_FILE), { recursive: true }); [7]
+fs.writeFileSync(OUTPUT_FILE, ''); [7]
 
 console.log('Starting file scan...');
 
-/**
- * Determines if a file should be excluded based on specific patterns or names.
- * @param {string} filePath The full path to the file.
- * @returns {boolean} True if the file should be excluded.
- */
-function shouldExcludeFile(filePath) {
-  const normalizedPath = path.normalize(filePath); // Normalize path for consistent matching
-
-  // Check against specific excluded file patterns
-  for (const pattern of EXCLUDED_FILE_PATTERNS) {
-    if (pattern.test(normalizedPath)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/**
- * Recursively walks through directories to find files to include.
- * @param {string} dir The current directory to scan.
- */
+// Phase 2: Walk the directory tree and process files based on the collected ignore rules.
 function walkDir(dir) {
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
-
+  const entries = fs.readdirSync(dir, { withFileTypes: true }); [7]
   for (const entry of entries) {
     const fullPath = path.join(dir, entry.name);
-    const relativePath = path.relative(START_DIR, fullPath); // Get path relative to START_DIR
+    const relativePath = path.relative(START_DIR, fullPath);
 
-    // Check if the current entry (or its parent chain) is an explicitly excluded directory.
-    let isExcludedDir = false;
-    for (const excludedDir of EXCLUDED_DIRS) {
-      if (relativePath.startsWith(excludedDir) || relativePath === excludedDir) {
-        isExcludedDir = true;
-        break;
-      }
-    }
-    if (isExcludedDir) {
-      console.log(`  - Skipping excluded directory: ${fullPath}`);
-      continue; // Skip the entire excluded directory tree
+    // Skip the output file itself to prevent recursion/self-inclusion. [1]
+    if (relativePath === path.relative(START_DIR, OUTPUT_FILE)) {
+      continue;
     }
 
+    // Apply hardcoded exclusions first. These override any .gitignore un-ignore rules.
+    if (ALWAYS_EXCLUDED_DIRS.has(entry.name)) {
+        console.log(`  - Hardcoded ignored: ${fullPath}`);
+        continue;
+    }
+
+    // Use the 'ignore' package to check if the path should be ignored by .gitignore patterns.
+    // For directories, append a trailing slash to correctly match directory-specific patterns.
+    const isIgnoredByGitignore = entry.isDirectory() ? ig.ignores(relativePath + '/') : ig.ignores(relativePath);
+
+    if (isIgnoredByGitignore) {
+        console.log(`  - Ignored ${fullPath} due to .gitignore pattern.`);
+        continue; // Skip ignored files/directories
+    }
+
+    // If it's a directory and not ignored, recurse into it.
     if (entry.isDirectory()) {
-      walkDir(fullPath); // Recurse into subdirectories
+        walkDir(fullPath); [3]
     } else if (entry.isFile()) {
-      const ext = path.extname(entry.name);
-      const filename = entry.name;
+        // If it's a file and not ignored, check its extension/name.
+        const ext = path.extname(entry.name);
+        const filename = entry.name;
 
-      // Determine if the file should be processed:
-      // 1. Its extension must be in FILE_EXTENSIONS OR its name in FILE_NAMES.
-      // 2. It must NOT be a Markdown file (.md).
-      // 3. It must NOT match any of the specific EXCLUDED_FILE_PATTERNS.
-      const shouldProcess =
-        (FILE_EXTENSIONS.has(ext) || FILE_NAMES.has(filename)) &&
-        ext !== '.md' && // Explicitly exclude .md files as per instruction
-        !shouldExcludeFile(fullPath);
-
-      if (shouldProcess) {
-        processFile(fullPath);
-      } else {
-        console.log(`  - Skipping file: ${fullPath} (does not match criteria or is excluded)`);
-      }
+        // Only process files with specified extensions or names. [3]
+        if (FILE_EXTENSIONS.has(ext) || FILE_NAMES.has(filename)) {
+            processFile(fullPath);
+        }
     }
   }
 }
 
-/**
- * Processes a single file: reads its content, formats it with a header/footer,
- * and appends it to the output file.
- * @param {string} filePath The full path to the file to process.
- */
+// This function handles the "tar-style" magic for each file. [3]
 function processFile(filePath) {
   try {
-    const stat = fs.statSync(filePath);
+    const stat = fs.statSync(filePath); // Get file metadata, like in a real tarball.
     const content = fs.readFileSync(filePath, 'utf8');
 
-    // Format file permissions to be human-readable (e.g., -rw-r--r--)
+    // Convert file permissions to a classic octal string (e.g., 644, 755).
     const perms = (stat.mode & 0o777).toString(8).padStart(3, '0');
 
-    // Construct the text-based header with common tar-like variables
+    // Crafting the header. Note the path normalization for consistency. [8, 9]
     const header = [
       `--- START HEADER ---`,
-      `path: ./${path.relative(START_DIR, filePath).replace(/\\/g, '/')}`,
+      `path: ./${filePath.replace(/\\/g, '/')}`, // Standardize path separators.
       `size: ${stat.size} bytes`,
       `mode: ${perms}`,
       `uid: ${stat.uid}`,
@@ -190,9 +171,10 @@ function processFile(filePath) {
       `--- END HEADER ---`
     ].join('\n');
 
-    const footer = `--- END: ./${path.relative(START_DIR, filePath).replace(/\\/g, '/')} ---`;
+    // Adding a clear footer for file separation.
+    const footer = `--- END: ./${filePath.replace(/\\/g, '/')} ---`;
 
-    // Append the entry to the output file
+    // Append the whole shebang to our output file.
     const entry = `${header}\n${content}\n${footer}\n\n`;
     fs.appendFileSync(OUTPUT_FILE, entry, 'utf8');
     console.log(`  + Added ${filePath}`);
@@ -201,6 +183,7 @@ function processFile(filePath) {
   }
 }
 
-// Start the file scanning process
-walkDir(START_DIR);
+// Kick off the file system scan from the current directory.
+walkDir(START_DIR); [3]
+
 console.log(`\nText archive created successfully at ${OUTPUT_FILE}`);
