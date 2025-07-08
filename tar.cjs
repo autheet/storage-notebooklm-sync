@@ -13,7 +13,7 @@ const ALWAYS_EXCLUDED_DIRS = new Set(['.git', 'tmp']); // [1]
 // Define the file extensions and specific filenames to include.
 // This list is quite comprehensive based on the project's likely codebase. [6]
 const FILE_EXTENSIONS = new Set([
-  '.txt', '.md', '.py', '.dart', '.js', '.ts', '.html', '.css',
+  '.txt', '.py', '.dart', '.js', '.ts', '.html', '.css',
   '.java', '.kt', '.swift', '.c', '.cpp', '.h', '.hpp', '.rs',
   '.go', '.rb', '.php', '.yml', '.yaml', '.json', '.xml', '.sh',
   '.ini', '.conf', '.properties', '.gitignore', '.npmignore', '.svg' // Added .gitignore and .npmignore for completeness
